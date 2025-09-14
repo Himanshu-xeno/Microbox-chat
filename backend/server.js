@@ -31,8 +31,10 @@ app.get("/", (req, res) => {
 io.on("connection", (socket) => {
   console.log("🔗 New client connected:", socket.id);
 
+  // Listen for "hello" event from client
   socket.on("hello", (msg) => {
     console.log("Message from client:", msg);
+    // Send response back to this client
     socket.emit("helloResponse", "Hello from server 👋");
   });
 

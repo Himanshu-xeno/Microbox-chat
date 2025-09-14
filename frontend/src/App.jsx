@@ -3,17 +3,23 @@ import { io } from "socket.io-client";
 
 function App() {
   useEffect(() => {
-    // Connect to backend
+    // Connect to backend Socket.IO server
     const socket = io("http://localhost:5000");
 
-    // Send a message after connecting
-    socket.emit("message", "Hello from client 💻");
+    // Emit "hello" event with a message to backend
+    socket.emit("hello", "Hello from client 💻");
 
-    // Listen for server reply
-    socket.on("server-message", (msg) => {
+    // Listen for response event "helloResponse"
+    socket.on("helloResponse", (msg) => {
       console.log("Server says:", msg);
     });
 
+    // Handle connection errors
+    socket.on("connect_error", (err) => {
+      console.error("Connection error:", err.message);
+    });
+
+    // Cleanup socket connection on component unmount
     return () => {
       socket.disconnect();
     };
