@@ -4,6 +4,8 @@ import { Server } from "socket.io";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import authRoutes from "./routes/authRoutes.js";
+import verifyToken from "./middleware/verifyToken.js";
 
 dotenv.config();
 const app = express();
@@ -15,6 +17,8 @@ const io = new Server(server, {
 // Middleware
 app.use(cors());
 app.use(express.json());
+// Mount auth routes
+app.use("/api/auth", authRoutes);
 
 // MongoDB connection
 mongoose
@@ -25,6 +29,11 @@ mongoose
 // Test route
 app.get("/", (req, res) => {
   res.send("MicroBox Chat Backend Running 🚀");
+});
+// Example protected test route:
+app.get("/api/me", verifyToken, (req, res) => {
+  // req.user set by middleware
+  res.json({ message: "You are authenticated", user: req.user });
 });
 
 // Socket.io setup
