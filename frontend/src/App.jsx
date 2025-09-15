@@ -59,7 +59,7 @@ function App() {
             <div className="p-4">
               <h2 className="font-bold">Welcome, {user.name}</h2>
               <div className="mt-2">
-                <button className="px-3 py-1 mr-2 border" onClick={() => alert("Socket id: " + (socket ? socket.id : "not connected"))}>Socket Info</button>
+                {/* <button className="px-3 py-1 mr-2 border" onClick={() => alert("Socket id: " + (socket ? socket.id : "not connected"))}>Socket Info</button> */}
                 <button className="px-3 py-1 bg-red-500 text-white" onClick={handleLogout}>Logout</button>
               </div>
             </div>
