@@ -51,30 +51,43 @@ app.get("/api/users", verifyToken, async (req, res) => {
   }
 });
 
-// Get private messages between me and otherId
+// Get private messages between me and otherId with pagination
 app.get("/api/messages/:otherId", verifyToken, async (req, res) => {
   try {
     const me = req.user.id;
     const other = req.params.otherId;
-    const messages = await Message.find({
+    const limit = parseInt(req.query.limit) || 50;
+    const before = req.query.before ? new Date(req.query.before) : null;
+
+    const q = {
       $or: [
         { sender: me, receiver: other },
         { sender: other, receiver: me },
       ],
-    }).sort({ createdAt: 1 });
-    res.json(messages);
+    };
+    if (before) q.createdAt = { $lt: before };
+
+    const msgs = await Message.find(q).sort({ createdAt: -1 }).limit(limit);
+    // Return in ascending order (oldest → newest)
+    res.json(msgs.reverse());
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// Get group messages for a groupId (e.g. "global")
+// Get group messages for a groupId with pagination
 app.get("/api/messages/group/:groupId", verifyToken, async (req, res) => {
   try {
     const groupId = req.params.groupId;
-    const messages = await Message.find({ group: groupId }).sort({ createdAt: 1 });
-    res.json(messages);
+    const limit = parseInt(req.query.limit) || 50;
+    const before = req.query.before ? new Date(req.query.before) : null;
+
+    const q = { group: groupId };
+    if (before) q.createdAt = { $lt: before };
+
+    const msgs = await Message.find(q).sort({ createdAt: -1 }).limit(limit);
+    res.json(msgs.reverse());
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
