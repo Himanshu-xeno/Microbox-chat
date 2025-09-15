@@ -1,24 +1,30 @@
+// backend/server.js
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import authRoutes from "./routes/authRoutes.js";
-import verifyToken from "./middleware/verifyToken.js";
+import jwt from "jsonwebtoken";
+
+import authRoutes from "./routes/authRoutes.js"; // from Day2
+import verifyToken from "./middleware/verifyToken.js"; // from Day2
+import User from "./models/User.js";
+import Message from "./models/Message.js";
 
 dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
 });
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-// Mount auth routes
-app.use("/api/auth", authRoutes);
 
 // MongoDB connection
 mongoose
@@ -26,30 +32,140 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error(err));
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("MicroBox Chat Backend Running 🚀");
-});
-// Example protected test route:
+// Routes
+app.use("/api/auth", authRoutes);
+
+// Get current user (protected)
 app.get("/api/me", verifyToken, (req, res) => {
-  // req.user set by middleware
-  res.json({ message: "You are authenticated", user: req.user });
+  res.json({ user: req.user });
 });
 
-// Socket.io setup
-io.on("connection", (socket) => {
-  console.log("🔗 New client connected:", socket.id);
+// List users (protected)
+app.get("/api/users", verifyToken, async (req, res) => {
+  try {
+    const users = await User.find({}, "-password").sort({ name: 1 });
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
-  // Listen for "hello" event from client
-  socket.on("hello", (msg) => {
-    console.log("Message from client:", msg);
-    // Send response back to this client
-    socket.emit("helloResponse", "Hello from server 👋");
+// Get private messages between me and otherId
+app.get("/api/messages/:otherId", verifyToken, async (req, res) => {
+  try {
+    const me = req.user.id;
+    const other = req.params.otherId;
+    const messages = await Message.find({
+      $or: [
+        { sender: me, receiver: other },
+        { sender: other, receiver: me },
+      ],
+    }).sort({ createdAt: 1 });
+    res.json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get group messages for a groupId (e.g. "global")
+app.get("/api/messages/group/:groupId", verifyToken, async (req, res) => {
+  try {
+    const groupId = req.params.groupId;
+    const messages = await Message.find({ group: groupId }).sort({ createdAt: 1 });
+    res.json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// --- Socket.IO with token verification ---
+const onlineUsers = new Map(); // userId -> socketId
+
+// Middleware to check token for socket handshake
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error("No token provided"));
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = decoded; // attach user info to socket
+    next();
+  } catch (err) {
+    next(new Error("Invalid token"));
+  }
+});
+
+io.on("connection", (socket) => {
+  const userId = socket.user.id;
+  onlineUsers.set(userId, socket.id);
+  console.log("🔗 New client connected:", socket.id, "user:", userId);
+
+  // Optionally join default group 'global' (clients may also emit joinGroup)
+  socket.join("global");
+
+  // Allow client to join a group
+  socket.on("joinGroup", (groupId) => {
+    socket.join(groupId);
+    console.log(`User ${userId} joined group ${groupId}`);
+  });
+
+  // sendMessage: payload { to, text, isGroup, groupId }
+  socket.on("sendMessage", async (payload) => {
+    try {
+      const { to, text, isGroup, groupId } = payload;
+      if (isGroup) {
+        const msg = await Message.create({
+          sender: userId,
+          group: groupId || "global",
+          text,
+        });
+        // Emit to room
+        io.to(groupId || "global").emit("newMessage", {
+          _id: msg._id,
+          sender: msg.sender,
+          group: msg.group,
+          text: msg.text,
+          createdAt: msg.createdAt,
+        });
+      } else {
+        // private message
+        const msg = await Message.create({
+          sender: userId,
+          receiver: to,
+          text,
+        });
+        const out = {
+          _id: msg._id,
+          sender: msg.sender,
+          receiver: msg.receiver,
+          text: msg.text,
+          createdAt: msg.createdAt,
+        };
+
+        // send to receiver if online
+        const recvSocketId = onlineUsers.get(String(to));
+        if (recvSocketId) {
+          io.to(recvSocketId).emit("newMessage", out);
+        }
+        // emit to sender (so UI updates)
+        socket.emit("newMessage", out);
+      }
+    } catch (err) {
+      console.error("Error saving/sending message:", err);
+    }
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ Client disconnected:", socket.id);
+    onlineUsers.delete(userId);
+    console.log("❌ Client disconnected:", socket.id, "user:", userId);
   });
+});
+
+// Test route
+app.get("/", (req, res) => {
+  res.send("MicroBox Chat Backend Running 🚀");
 });
 
 // Start server
