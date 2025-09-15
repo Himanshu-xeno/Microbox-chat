@@ -6,6 +6,7 @@ export default function ChatWindow({ currentUser, selectedUser, socket }) {
   const [text, setText] = useState("");
   const bottomRef = useRef();
 
+  // Load history when user changes
   useEffect(() => {
     if (!selectedUser) return;
     async function loadHistory() {
@@ -35,11 +36,12 @@ export default function ChatWindow({ currentUser, selectedUser, socket }) {
   useEffect(() => {
     if (!socket) return;
     const handler = (msg) => {
-      // For group: msg.group === selectedUser.id
-      // For private: sender/receiver matching current chat
       if (!selectedUser) return;
+
       if (selectedUser.isGroup) {
-        if (msg.group === selectedUser.id) setMessages((p) => [...p, msg]);
+        if (msg.group === selectedUser.id) {
+          setMessages((p) => [...p, msg]);
+        }
       } else {
         const myId = currentUser.id;
         if (
@@ -51,24 +53,21 @@ export default function ChatWindow({ currentUser, selectedUser, socket }) {
       }
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     };
+
     socket.on("newMessage", handler);
     return () => socket.off("newMessage", handler);
   }, [socket, selectedUser, currentUser]);
 
   async function handleSend() {
     if (!text.trim() || !selectedUser) return;
+
     const payload = selectedUser.isGroup
       ? { to: null, text, isGroup: true, groupId: selectedUser.id }
       : { to: selectedUser.id, text, isGroup: false };
 
+    // Just emit → server will save & broadcast
     socket.emit("sendMessage", payload);
     setText("");
-    // optimistic UI append (server will also emit back)
-    setMessages((p) => [
-      ...p,
-      { sender: currentUser.id, receiver: selectedUser.isGroup ? null : selectedUser.id, group: selectedUser.isGroup ? selectedUser.id : null, text, createdAt: new Date().toISOString() },
-    ]);
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
   if (!selectedUser) return <div className="flex-1 p-6">Select a contact to start chat.</div>;
@@ -86,7 +85,9 @@ export default function ChatWindow({ currentUser, selectedUser, socket }) {
             <div key={idx} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-xs p-2 rounded ${isMine ? "bg-blue-600 text-white" : "bg-gray-200"}`}>
                 <div>{m.text}</div>
-                <div className="text-xs text-gray-500 mt-1">{new Date(m.createdAt).toLocaleTimeString()}</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {new Date(m.createdAt).toLocaleTimeString()}
+                </div>
               </div>
             </div>
           );
@@ -95,8 +96,16 @@ export default function ChatWindow({ currentUser, selectedUser, socket }) {
       </div>
 
       <div className="p-4 border-t flex gap-2">
-        <input className="flex-1 p-2 border" value={text} onChange={(e) => setText(e.target.value)} placeholder="Type a message..." onKeyDown={(e)=> e.key==='Enter' && handleSend()} />
-        <button className="px-4 py-2 bg-blue-600 text-white" onClick={handleSend}>Send</button>
+        <input
+          className="flex-1 p-2 border"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Type a message..."
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+        />
+        <button className="px-4 py-2 bg-blue-600 text-white" onClick={handleSend}>
+          Send
+        </button>
       </div>
     </div>
   );
