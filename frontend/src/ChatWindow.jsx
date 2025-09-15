@@ -83,9 +83,9 @@ export default function ChatWindow({ currentUser, selectedUser, socket }) {
           const isMine = m.sender === currentUser.id;
           return (
             <div key={idx} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-xs p-2 rounded ${isMine ? "bg-blue-600 text-white" : "bg-gray-200"}`}>
+              <div className={`max-w-xs p-2 rounded ${isMine ? "bg-green-600 text-white" : "bg-gray-200"}`}>
                 <div>{m.text}</div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-white-300 mt-1">
                   {new Date(m.createdAt).toLocaleTimeString()}
                 </div>
               </div>
