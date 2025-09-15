@@ -102,13 +102,62 @@ io.on("connection", (socket) => {
   onlineUsers.set(userId, socket.id);
   console.log("🔗 New client connected:", socket.id, "user:", userId);
 
-  // Optionally join default group 'global' (clients may also emit joinGroup)
+  // Broadcast updated online users
+  io.emit("onlineUsers", Array.from(onlineUsers.keys()));
+
+  // Join default group
   socket.join("global");
 
   // Allow client to join a group
   socket.on("joinGroup", (groupId) => {
     socket.join(groupId);
     console.log(`User ${userId} joined group ${groupId}`);
+  });
+
+  // Handle typing events
+  socket.on("typing", ({ to, isGroup, groupId }) => {
+    if (isGroup) {
+      socket.to(groupId || "global").emit("typing", { userId, groupId });
+    } else if (to) {
+      const recvSocketId = onlineUsers.get(String(to));
+      if (recvSocketId) {
+        io.to(recvSocketId).emit("typing", { userId });
+      }
+    }
+  });
+
+  // Handle stopTyping events
+  socket.on("stopTyping", ({ to, isGroup, groupId }) => {
+    if (isGroup) {
+      socket.to(groupId || "global").emit("stopTyping", { userId, groupId });
+    } else if (to) {
+      const recvSocketId = onlineUsers.get(String(to));
+      if (recvSocketId) {
+        io.to(recvSocketId).emit("stopTyping", { userId });
+      }
+    }
+  });
+
+  // Handle marking messages as seen (private only)
+  socket.on("markSeen", async ({ withUserId, isGroup }) => {
+    try {
+      if (isGroup) {
+        // For now, ignore group seen
+        return;
+      }
+
+      const res = await Message.updateMany(
+        { sender: withUserId, receiver: userId, seen: false },
+        { $set: { seen: true } }
+      );
+
+      const senderSocketId = onlineUsers.get(String(withUserId));
+      if (senderSocketId) {
+        io.to(senderSocketId).emit("messagesSeen", { by: userId, withUserId });
+      }
+    } catch (err) {
+      console.error("markSeen error:", err);
+    }
   });
 
   // sendMessage: payload { to, text, isGroup, groupId }
@@ -121,7 +170,6 @@ io.on("connection", (socket) => {
           group: groupId || "global",
           text,
         });
-        // Emit to room
         io.to(groupId || "global").emit("newMessage", {
           _id: msg._id,
           sender: msg.sender,
@@ -130,7 +178,6 @@ io.on("connection", (socket) => {
           createdAt: msg.createdAt,
         });
       } else {
-        // private message
         const msg = await Message.create({
           sender: userId,
           receiver: to,
@@ -144,12 +191,10 @@ io.on("connection", (socket) => {
           createdAt: msg.createdAt,
         };
 
-        // send to receiver if online
         const recvSocketId = onlineUsers.get(String(to));
         if (recvSocketId) {
           io.to(recvSocketId).emit("newMessage", out);
         }
-        // emit to sender (so UI updates)
         socket.emit("newMessage", out);
       }
     } catch (err) {
@@ -157,8 +202,10 @@ io.on("connection", (socket) => {
     }
   });
 
+  // On disconnect
   socket.on("disconnect", () => {
     onlineUsers.delete(userId);
+    io.emit("onlineUsers", Array.from(onlineUsers.keys()));
     console.log("❌ Client disconnected:", socket.id, "user:", userId);
   });
 });
