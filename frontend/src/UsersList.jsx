@@ -34,7 +34,6 @@ export default function UsersList({ currentUser, onSelect, selectedUser, socket 
     socket.on("typing", typingHandler);
     socket.on("stopTyping", stopTypingHandler);
 
-    // cleanup
     return () => {
       socket.off("onlineUsers", onlineHandler);
       socket.off("typing", typingHandler);
@@ -43,32 +42,49 @@ export default function UsersList({ currentUser, onSelect, selectedUser, socket 
   }, [socket]);
 
   return (
-    <div className="w-64 border-r p-4">
-      <h3 className="font-bold mb-3">Contacts</h3>
-
+    <div className="flex-1 overflow-y-auto">
       <button
         onClick={() => onSelect({ id: "global", name: "Group Chat", isGroup: true })}
-        className={`block w-full text-left p-2 rounded mb-2 ${selectedUser?.id === "global" ? "bg-gray-200" : ""}`}
+        className={`w-full flex items-center gap-3 p-3 rounded-lg mb-2 hover:bg-gray-100 transition ${
+          selectedUser?.id === "global" ? "bg-gray-200" : ""
+        }`}
       >
-        Group Chat {online.includes("global") ? <span>●</span> : null}
+        <div className="w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full font-bold">
+          G
+        </div>
+        <div className="flex flex-col">
+          <span className="font-medium">Group Chat</span>
+          {online.includes("global") && <span className="text-xs text-green-500">● Online</span>}
+        </div>
       </button>
 
-      <div className="space-y-2">
-        {users.map((u) => {
-          const isOnline = online.includes(u._id);
-          return (
-            <div key={u._id} className={`flex items-center justify-between p-2 rounded ${selectedUser?.id === u._id ? "bg-gray-200" : ""}`}>
-              <button className="text-left flex-1" onClick={() => onSelect({ id: u._id, name: u.name, isGroup: false })}>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: isOnline ? "#22c55e" : "#cbd5e1" }} />
-                  <span>{u.name}</span>
-                </div>
-                {typingMap[u._id] && <div className="text-xs text-gray-500">typing…</div>}
-              </button>
+      {users.map((u) => {
+        const isOnline = online.includes(u._id);
+        return (
+          <button
+            key={u._id}
+            className={`w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition ${
+              selectedUser?.id === u._id ? "bg-gray-200" : ""
+            }`}
+            onClick={() => onSelect({ id: u._id, name: u.name, isGroup: false })}
+          >
+            <div className="relative">
+              <div className="w-10 h-10 flex items-center justify-center bg-gray-300 rounded-full text-gray-700 font-bold">
+                {u.name.charAt(0).toUpperCase()}
+              </div>
+              <span
+                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ${
+                  isOnline ? "bg-green-500" : "bg-gray-400"
+                } border border-white`}
+              ></span>
             </div>
-          );
-        })}
-      </div>
+            <div className="flex flex-col text-left">
+              <span className="font-medium">{u.name}</span>
+              {typingMap[u._id] && <span className="text-xs text-gray-500">typing…</span>}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
