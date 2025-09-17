@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react"; // 👈 install: npm install lucide-react
 
 export default function Login({ onAuth, switchToRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e) {
@@ -29,15 +31,72 @@ export default function Login({ onAuth, switchToRegister }) {
   }
 
   return (
-    <div className="max-w-md mx-auto my-8 p-6 bg-white rounded shadow">
-      <h2 className="text-xl font-semibold mb-4">Login</h2>
-      {error && <div className="text-red-600 mb-2">{error}</div>}
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <input className="w-full p-2 border" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
-        <input className="w-full p-2 border" placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} />
-        <button className="w-full p-2 bg-green-600 text-white">Login</button>
-      </form>
-      <p className="mt-3 text-sm">New here? <button className="text-blue-600" onClick={switchToRegister}>Register</button></p>
+    <div className="h-screen grid grid-cols-1 md:grid-cols-2 overflow-hidden">
+      {/* Left branding */}
+      <div className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700 text-white p-8">
+        <h1 className="text-4xl font-bold mb-4">MicroBox Chat 💬</h1>
+        <p className="text-lg leading-relaxed max-w-md text-center">
+          Connect instantly with your team and friends over LAN.
+          Fast, secure and reliable real-time messaging.
+        </p>
+      </div>
+
+      {/* Right form */}
+      <div className="flex items-center justify-center bg-gray-50">
+        <div className="w-full max-w-sm bg-white rounded-xl shadow-lg px-6 py-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
+            Login
+          </h2>
+
+          {error && (
+            <div className="text-red-600 text-sm mb-4 text-center">{error}</div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
+            <input
+              className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            {/* Password with toggle */}
+            <div className="relative">
+              <input
+                className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm pr-10"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            {/* Login Button */}
+            <button className="w-full py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition text-sm">
+              Login
+            </button>
+          </form>
+
+          <p className="mt-5 text-sm text-center text-gray-600">
+            New here?{" "}
+            <button
+              onClick={switchToRegister}
+              className="text-blue-600 font-semibold hover:underline"
+            >
+              Create an account
+            </button>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
