@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 export default function UsersList({ currentUser, onSelect, selectedUser, socket }) {
   const [users, setUsers] = useState([]);
@@ -27,8 +28,10 @@ export default function UsersList({ currentUser, onSelect, selectedUser, socket 
   useEffect(() => {
     if (!socket) return;
     const onlineHandler = (list) => setOnline(list);
-    const typingHandler = ({ userId }) => setTypingMap((m) => ({ ...m, [userId]: true }));
-    const stopTypingHandler = ({ userId }) => setTypingMap((m) => ({ ...m, [userId]: false }));
+    const typingHandler = ({ userId }) =>
+      setTypingMap((m) => ({ ...m, [userId]: true }));
+    const stopTypingHandler = ({ userId }) =>
+      setTypingMap((m) => ({ ...m, [userId]: false }));
 
     socket.on("onlineUsers", onlineHandler);
     socket.on("typing", typingHandler);
@@ -42,49 +45,73 @@ export default function UsersList({ currentUser, onSelect, selectedUser, socket 
   }, [socket]);
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <button
-        onClick={() => onSelect({ id: "global", name: "Group Chat", isGroup: true })}
-        className={`w-full flex items-center gap-3 p-3 rounded-lg mb-2 hover:bg-gray-100 transition ${
-          selectedUser?.id === "global" ? "bg-gray-200" : ""
-        }`}
-      >
-        <div className="w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full font-bold">
-          G
-        </div>
-        <div className="flex flex-col">
-          <span className="font-medium">Group Chat</span>
-          {online.includes("global") && <span className="text-xs text-green-500">● Online</span>}
-        </div>
-      </button>
+    <div className="w-full md:w-64 bg-white border-r border-gray-200 h-full overflow-y-auto">
+      <h2 className="text-xl font-semibold p-4 border-b border-gray-200">
+        Chats
+      </h2>
 
-      {users.map((u) => {
-        const isOnline = online.includes(u._id);
-        return (
-          <button
-            key={u._id}
-            className={`w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition ${
-              selectedUser?.id === u._id ? "bg-gray-200" : ""
-            }`}
-            onClick={() => onSelect({ id: u._id, name: u.name, isGroup: false })}
-          >
-            <div className="relative">
-              <div className="w-10 h-10 flex items-center justify-center bg-gray-300 rounded-full text-gray-700 font-bold">
-                {u.name.charAt(0).toUpperCase()}
+      <ul>
+        {/* Group Chat */}
+        <motion.li
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className={`flex items-center p-3 mx-2 my-1 cursor-pointer rounded-lg transition 
+            ${selectedUser?.id === "global" ? "bg-blue-100" : "hover:bg-gray-100"}`}
+          onClick={() => onSelect({ id: "global", name: "Group Chat", isGroup: true })}
+        >
+          <div className="relative">
+            <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold">
+              G
+            </div>
+          </div>
+          <div className="ml-3 flex flex-col text-left">
+            <span className="font-medium">Group Chat</span>
+            {online.includes("global") && (
+              <span className="text-xs text-green-500">● Online</span>
+            )}
+          </div>
+        </motion.li>
+
+        {/* Direct Chats */}
+        {users.map((u) => {
+          const isOnline = online.includes(u._id);
+          const isTyping = typingMap[u._id];
+
+          return (
+            <motion.li
+              key={u._id}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onSelect({ id: u._id, name: u.name, isGroup: false })}
+              className={`flex items-center p-3 mx-2 my-1 cursor-pointer rounded-lg transition 
+                ${selectedUser?.id === u._id ? "bg-blue-100" : "hover:bg-gray-100"}`}
+            >
+              {/* Avatar */}
+              <div className="relative">
+                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
+                  {u.name.charAt(0).toUpperCase()}
+                </div>
+                <span
+                  className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white 
+                  ${isOnline ? "bg-green-500" : "bg-gray-400"}`}
+                ></span>
               </div>
-              <span
-                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ${
-                  isOnline ? "bg-green-500" : "bg-gray-400"
-                } border border-white`}
-              ></span>
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="font-medium">{u.name}</span>
-              {typingMap[u._id] && <span className="text-xs text-gray-500">typing…</span>}
-            </div>
-          </button>
-        );
-      })}
+
+              {/* Info */}
+              <div className="ml-3 flex flex-col text-left min-w-0">
+                <span className="font-medium truncate">{u.name}</span>
+                {isTyping ? (
+                  <span className="text-xs text-blue-500 animate-pulse">typing…</span>
+                ) : (
+                  <span className="text-xs text-gray-500">
+                    {isOnline ? "Online" : "Offline"}
+                  </span>
+                )}
+              </div>
+            </motion.li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
