@@ -5,6 +5,7 @@ import Register from "./Register";
 import Login from "./Login";
 import UsersList from "./UsersList";
 import ChatWindow from "./ChatWindow";
+import { LogOut } from "lucide-react";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -45,7 +46,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#1e1f22] flex items-center justify-center p-4">
       {!user ? (
         view === "login" ? (
           <Login onAuth={handleAuth} switchToRegister={() => setView("register")} />
@@ -53,22 +54,27 @@ function App() {
           <Register onAuth={handleAuth} switchToLogin={() => setView("login")} />
         )
       ) : (
-        <div className="w-full max-w-6xl h-[90vh] bg-white rounded-xl shadow-lg overflow-hidden flex">
+        <div className="w-full max-w-6xl h-[90vh] bg-[#2b2d31] rounded-xl shadow-2xl overflow-hidden flex">
           {/* Sidebar */}
           <div
             className={`${
               selectedUser ? "hidden md:flex" : "flex"
-            } md:w-1/3 w-full flex-col border-r`}
+            } md:w-1/3 w-full flex-col bg-[#2f3136] border-r border-gray-700`}
           >
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="font-bold text-lg">Welcome, {user.name}</h2>
+            {/* Header */}
+            <div className="p-4 border-b border-gray-700 flex items-center justify-between bg-[#202225]">
+              <h2 className="font-bold text-lg text-white truncate">
+                {user.name}
+              </h2>
               <button
-                className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+                className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                 onClick={handleLogout}
               >
-                Logout
+                <LogOut size={18} />
               </button>
             </div>
+
+            {/* Users List */}
             <UsersList
               currentUser={user}
               onSelect={setSelectedUser}
@@ -81,7 +87,7 @@ function App() {
           <div
             className={`flex-1 ${
               !selectedUser ? "hidden md:flex" : "flex"
-            } flex-col`}
+            } flex-col bg-[#36393f]`}
           >
             <ChatWindow
               currentUser={user}
