@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Send, ArrowLeft, Smile, X } from "lucide-react";
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import Picker from "emoji-picker-react";
 
