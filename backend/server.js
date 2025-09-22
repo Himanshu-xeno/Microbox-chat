@@ -179,44 +179,57 @@ io.on("connection", (socket) => {
 
   // sendMessage: payload { to, text, isGroup, groupId }
   socket.on("sendMessage", async (payload) => {
-    try {
-      const { to, text, isGroup, groupId } = payload;
-      if (isGroup) {
-        const msg = await Message.create({
-          sender: userId,
-          group: groupId || "global",
-          text,
-        });
-        io.to(groupId || "global").emit("newMessage", {
-          _id: msg._id,
-          sender: msg.sender,
-          group: msg.group,
-          text: msg.text,
-          createdAt: msg.createdAt,
-        });
-      } else {
-        const msg = await Message.create({
-          sender: userId,
-          receiver: to,
-          text,
-        });
-        const out = {
-          _id: msg._id,
-          sender: msg.sender,
-          receiver: msg.receiver,
-          text: msg.text,
-          createdAt: msg.createdAt,
-        };
+      try {
+    const { to, text, isGroup, groupId } = payload;
 
-        const recvSocketId = onlineUsers.get(String(to));
-        if (recvSocketId) {
-          io.to(recvSocketId).emit("newMessage", out);
-        }
-        socket.emit("newMessage", out);
-      }
-    } catch (err) {
-      console.error("Error saving/sending message:", err);
+    // compute chatId
+    let chatId;
+    if (isGroup) {
+      chatId = groupId || "global";
+    } else {
+      // private: deterministic id e.g., smallerId_largerId
+      const a = String(socket.user.id);
+      const b = String(to);
+      chatId = [a, b].sort().join("_");
     }
+
+    // Save message: text (Day4), ciphertext+iv placeholders (Day5)
+    const msg = await Message.create({
+      chatId,
+      sender: userId,
+      receiver: isGroup ? null : to,
+      group: isGroup ? (groupId || "global") : null,
+      text: text || "",
+      ciphertext: "", // keep placeholder for Day5
+      iv: "",
+      seen: false
+    });
+
+    const out = {
+      _id: msg._id,
+      chatId: msg.chatId,
+      sender: msg.sender,
+      receiver: msg.receiver,
+      group: msg.group,
+      text: msg.text,
+      createdAt: msg.createdAt,
+      seen: msg.seen
+    };
+
+    if (isGroup) {
+      io.to(groupId || "global").emit("newMessage", out);
+    } else {
+      // emit to receiver (if online) and to sender
+      const recvSocketId = onlineUsers.get(String(to));
+      if (recvSocketId) {
+        io.to(recvSocketId).emit("newMessage", out);
+      }
+      // emit to sender's socket (so UI gets server-provided msg id/timestamp)
+      socket.emit("newMessage", out);
+    }
+  } catch (err) {
+    console.error("Error saving/sending message:", err);
+  }
   });
 
   // On disconnect
