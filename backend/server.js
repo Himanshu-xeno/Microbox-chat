@@ -12,6 +12,7 @@ import verifyToken from "./middleware/verifyToken.js"; // from Day2
 import User from "./models/User.js";
 import Message from "./models/Message.js";
 import conversationsRouter from "./routes/conversations.js";
+import unreadRouter from "./routes/unread.js";
 
 dotenv.config();
 const app = express();
@@ -36,6 +37,7 @@ mongoose
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/conversations", verifyToken, conversationsRouter);
+app.use("/api/unread-counts", verifyToken, unreadRouter);
 
 // Get current user (protected)
 app.get("/api/me", verifyToken, (req, res) => {
