@@ -35,7 +35,7 @@ mongoose
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/unread-counts", verifyToken, unreadRouter);
+app.use("/api/conversations", verifyToken, conversationsRouter);
 
 // Get current user (protected)
 app.get("/api/me", verifyToken, (req, res) => {
