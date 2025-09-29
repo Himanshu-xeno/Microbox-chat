@@ -144,3 +144,4 @@ export default function UsersList({ currentUser, onSelect, selectedUser, socket 
     </div>
   );
 }
+

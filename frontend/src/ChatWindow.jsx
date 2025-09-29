@@ -196,3 +196,5 @@ export default function ChatWindow({ currentUser, selectedUser, socket, onBack }
     </div>
   );
 }
+
+
