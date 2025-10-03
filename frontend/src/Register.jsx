@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react"; // install: npm install lucide-react
+import { generateKeyPair, exportPublicJwk, exportPrivateJwk } from "./crypto/cryptoUtils";
 
 export default function Register({ onAuth, switchToLogin }) {
   const [name, setName] = useState("");
@@ -9,27 +10,37 @@ export default function Register({ onAuth, switchToLogin }) {
   const [error, setError] = useState("");
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    try {
-      const res = await fetch("http://localhost:5000/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Registration failed");
-        return;
-      }
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      onAuth(data.user);
-    } catch (err) {
-      console.error(err);
-      setError("Network error");
+  e.preventDefault();
+  setError("");
+  try {
+    // Generate ECDH key pair BEFORE registering (so server stores publicKey)
+    const kp = await generateKeyPair();
+    const publicJwk = await exportPublicJwk(kp.publicKey);
+    const privateJwk = await exportPrivateJwk(kp.privateKey);
+
+    const res = await fetch("http://localhost:5000/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password, publicKey: publicJwk }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.message || "Registration failed");
+      return;
     }
+
+    // Store private key locally (scoped to this user)
+    // NOTE: for demo MVP we save in localStorage; prefer IndexedDB in prod.
+    localStorage.setItem(`privateKey_${data.user.id}`, JSON.stringify(privateJwk));
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+    onAuth(data.user);
+  } catch (err) {
+    console.error(err);
+    setError("Network error");
   }
+}
 
   return (
     <div className="h-screen grid grid-cols-1 md:grid-cols-2 overflow-hidden">
