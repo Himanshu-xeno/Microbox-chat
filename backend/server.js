@@ -178,30 +178,30 @@ io.on("connection", (socket) => {
   });
 
   // sendMessage: payload { to, text, isGroup, groupId }
-  socket.on("sendMessage", async (payload) => {
-      try {
-    const { to, text, isGroup, groupId } = payload;
+  // inside io.on("connection", (socket) => { ... })
+socket.on("sendMessage", async (payload) => {
+  try {
+    const { to, text, isGroup, groupId, ciphertext, iv } = payload;
 
     // compute chatId
     let chatId;
     if (isGroup) {
       chatId = groupId || "global";
     } else {
-      // private: deterministic id e.g., smallerId_largerId
       const a = String(socket.user.id);
       const b = String(to);
       chatId = [a, b].sort().join("_");
     }
 
-    // Save message: text (Day4), ciphertext+iv placeholders (Day5)
+    // If ciphertext provided, store it; otherwise fallback to plaintext (legacy)
     const msg = await Message.create({
       chatId,
       sender: userId,
       receiver: isGroup ? null : to,
       group: isGroup ? (groupId || "global") : null,
-      text: text || "",
-      ciphertext: "", // keep placeholder for Day5
-      iv: "",
+      text: ciphertext ? "" : (text || ""),
+      ciphertext: ciphertext || "",
+      iv: iv || "",
       seen: false
     });
 
@@ -211,26 +211,28 @@ io.on("connection", (socket) => {
       sender: msg.sender,
       receiver: msg.receiver,
       group: msg.group,
-      text: msg.text,
+      text: msg.text,           // will be empty if encrypted
+      ciphertext: msg.ciphertext,
+      iv: msg.iv,
       createdAt: msg.createdAt,
-      seen: msg.seen
+      seen: msg.seen,
+      encrypted: !!msg.ciphertext
     };
 
     if (isGroup) {
       io.to(groupId || "global").emit("newMessage", out);
     } else {
-      // emit to receiver (if online) and to sender
       const recvSocketId = onlineUsers.get(String(to));
       if (recvSocketId) {
         io.to(recvSocketId).emit("newMessage", out);
       }
-      // emit to sender's socket (so UI gets server-provided msg id/timestamp)
       socket.emit("newMessage", out);
     }
   } catch (err) {
     console.error("Error saving/sending message:", err);
   }
-  });
+});
+
 
   // On disconnect
   socket.on("disconnect", () => {
