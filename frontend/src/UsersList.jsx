@@ -104,7 +104,8 @@ export default function UsersList({ currentUser, onSelect, selectedUser, socket 
         return (
           <button
             key={u._id}
-            onClick={() => onSelect({ id: u._id, name: u.name, isGroup: false })}
+            // onClick={() => onSelect({ id: u._id, name: u.name, isGroup: false })}
+              onClick={() => onSelect({ id: u._id, name: u.name, isGroup: false, publicKey: u.publicKey })}
             className={`w-full flex items-center gap-3 p-3 rounded-lg transition relative
             ${selectedUser?.id === u._id ? "bg-[#404249]" : "hover:bg-[#383a40]"}`}
           >
