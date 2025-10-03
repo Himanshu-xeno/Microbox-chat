@@ -21,9 +21,17 @@ export default function Login({ onAuth, switchToRegister }) {
         setError(data.message || "Login failed");
         return;
       }
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      onAuth(data.user);
+      // after setting token & user
+localStorage.setItem("token", data.token);
+localStorage.setItem("user", JSON.stringify(data.user));
+const privateKey = localStorage.getItem(`privateKey_${data.user.id}`);
+if (!privateKey) {
+  // Optionally show a UI alert that encryption won't work without private key
+  // For MVP: continue, but user cannot decrypt older messages
+  console.warn("No local private key found for this account. You won't be able to decrypt existing encrypted messages on this device.");
+}
+onAuth(data.user);
+
     } catch (err) {
       console.error(err);
       setError("Network error");
