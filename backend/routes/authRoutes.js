@@ -1,3 +1,4 @@
+// backend/routes/authRoutes.js
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -8,7 +9,7 @@ const router = express.Router();
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, publicKey } = req.body;
     if (!name || !email || !password)
       return res.status(400).json({ message: "Name, email and password are required" });
 
@@ -20,7 +21,7 @@ router.post("/register", async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashed = await bcrypt.hash(password, salt);
 
-    const user = await User.create({ name, email, password: hashed });
+    const user = await User.create({ name, email, password: hashed, publicKey: publicKey || null });
 
     const token = jwt.sign(
       { id: user._id, name: user.name, email: user.email },
@@ -28,7 +29,15 @@ router.post("/register", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    return res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
+    return res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        publicKey: user.publicKey
+      }
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
@@ -54,7 +63,15 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    return res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
+    return res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        publicKey: user.publicKey
+      }
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
