@@ -22,16 +22,17 @@ export default function Login({ onAuth, switchToRegister }) {
         return;
       }
       // after setting token & user
-localStorage.setItem("token", data.token);
-localStorage.setItem("user", JSON.stringify(data.user));
-const privateKey = localStorage.getItem(`privateKey_${data.user.id}`);
-if (!privateKey) {
-  // Optionally show a UI alert that encryption won't work without private key
-  // For MVP: continue, but user cannot decrypt older messages
-  console.warn("No local private key found for this account. You won't be able to decrypt existing encrypted messages on this device.");
-}
-onAuth(data.user);
-
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      const privateKey = localStorage.getItem(`privateKey_${data.user.id}`);
+      if (!privateKey) {
+        // Optionally show a UI alert that encryption won't work without private key
+        // For MVP: continue, but user cannot decrypt older messages
+        console.warn(
+          "No local private key found for this account. You won't be able to decrypt existing encrypted messages on this device."
+        );
+      }
+      onAuth(data.user);
     } catch (err) {
       console.error(err);
       setError("Network error");
@@ -44,8 +45,8 @@ onAuth(data.user);
       <div className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700 text-white p-8">
         <h1 className="text-4xl font-bold mb-4">MicroBox Chat 💬</h1>
         <p className="text-lg leading-relaxed max-w-md text-center">
-          Connect instantly with your team and friends over LAN.
-          Fast, secure and reliable real-time messaging.
+          Connect instantly with your team and friends over LAN. Fast, secure
+          and reliable real-time messaging.
         </p>
       </div>
 
