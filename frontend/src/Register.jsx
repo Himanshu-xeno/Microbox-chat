@@ -1,6 +1,53 @@
+// import { useState } from "react";
+// import { Eye, EyeOff } from "lucide-react"; // install: npm install lucide-react
+// import { generateKeyPair, exportPublicJwk, exportPrivateJwk } from "./crypto/cryptoUtils";
+
+// export default function Register({ onAuth, switchToLogin }) {
+//   const [name, setName] = useState("");
+//   const [email, setEmail] = useState("");
+//   const [password, setPassword] = useState("");
+//   const [showPassword, setShowPassword] = useState(false);
+//   const [error, setError] = useState("");
+
+//   async function handleSubmit(e) {
+//   e.preventDefault();
+//   setError("");
+//   try {
+//     // Generate ECDH key pair BEFORE registering (so server stores publicKey)
+//     const kp = await generateKeyPair();
+//     const publicJwk = await exportPublicJwk(kp.publicKey);
+//     const privateJwk = await exportPrivateJwk(kp.privateKey);
+
+//     const res = await fetch("http://localhost:5000/api/auth/register", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ name, email, password, publicKey: publicJwk }),
+//     });
+//     const data = await res.json();
+//     if (!res.ok) {
+//       setError(data.message || "Registration failed");
+//       return;
+//     }
+
+//     // Store private key locally (scoped to this user)
+//     // NOTE: for demo MVP we save in localStorage; prefer IndexedDB in prod.
+//     localStorage.setItem(`privateKey_${data.user.id}`, JSON.stringify(privateJwk));
+
+//     localStorage.setItem("token", data.token);
+//     localStorage.setItem("user", JSON.stringify(data.user));
+//     onAuth(data.user);
+//   } catch (err) {
+//     console.error(err);
+//     setError("Network error");
+//   }
+// }
+
+// frontend/src/Register.jsx
+// frontend/src/Register.jsx
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react"; // install: npm install lucide-react
+import { Eye, EyeOff } from "lucide-react";
 import { generateKeyPair, exportPublicJwk, exportPrivateJwk } from "./crypto/cryptoUtils";
+import { savePrivateKey } from "./crypto/keyStore";
 
 export default function Register({ onAuth, switchToLogin }) {
   const [name, setName] = useState("");
@@ -10,37 +57,43 @@ export default function Register({ onAuth, switchToLogin }) {
   const [error, setError] = useState("");
 
   async function handleSubmit(e) {
-  e.preventDefault();
-  setError("");
-  try {
-    // Generate ECDH key pair BEFORE registering (so server stores publicKey)
-    const kp = await generateKeyPair();
-    const publicJwk = await exportPublicJwk(kp.publicKey);
-    const privateJwk = await exportPrivateJwk(kp.privateKey);
+    e.preventDefault();
+    setError("");
 
-    const res = await fetch("http://localhost:5000/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, publicKey: publicJwk }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.message || "Registration failed");
-      return;
+    try {
+      // 1. Generate key pair (ECDH for end-to-end encryption)
+      const kp = await generateKeyPair();
+      const publicJwk = await exportPublicJwk(kp.publicKey);
+      const privateJwk = await exportPrivateJwk(kp.privateKey);
+
+      // 2. Send registration request with public key
+      const res = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, publicKey: publicJwk }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Registration failed");
+        return;
+      }
+
+      // 3. Save private key securely in IndexedDB (scoped to userId)
+      await savePrivateKey(data.user.id, privateJwk);
+      console.log("✅ Private key stored for user:", data.user.id);
+
+      // 4. Save JWT + user details in localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // 5. Move to dashboard
+      onAuth(data.user);
+    } catch (err) {
+      console.error(err);
+      setError("Network error");
     }
-
-    // Store private key locally (scoped to this user)
-    // NOTE: for demo MVP we save in localStorage; prefer IndexedDB in prod.
-    localStorage.setItem(`privateKey_${data.user.id}`, JSON.stringify(privateJwk));
-
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    onAuth(data.user);
-  } catch (err) {
-    console.error(err);
-    setError("Network error");
   }
-}
 
   return (
     <div className="h-screen grid grid-cols-1 md:grid-cols-2 overflow-hidden">
@@ -55,16 +108,13 @@ export default function Register({ onAuth, switchToLogin }) {
       {/* Right form */}
       <div className="flex items-center justify-center bg-gray-50">
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg px-8 py-10 flex flex-col justify-center">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-            Register
-          </h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Register</h2>
 
           {error && (
             <div className="text-red-600 text-sm mb-4 text-center">{error}</div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name */}
             <input
               className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:outline-none text-sm"
               placeholder="Full Name"
@@ -72,8 +122,6 @@ export default function Register({ onAuth, switchToLogin }) {
               onChange={(e) => setName(e.target.value)}
               required
             />
-
-            {/* Email */}
             <input
               className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:outline-none text-sm"
               type="email"
@@ -82,8 +130,6 @@ export default function Register({ onAuth, switchToLogin }) {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-
-            {/* Password with toggle */}
             <div className="relative">
               <input
                 className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:outline-none text-sm pr-10"
@@ -101,8 +147,6 @@ export default function Register({ onAuth, switchToLogin }) {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-
-            {/* Register Button */}
             <button className="w-full py-3 rounded-xl bg-pink-600 text-white font-semibold hover:bg-pink-700 transition text-sm">
               Register
             </button>

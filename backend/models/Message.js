@@ -15,13 +15,18 @@ import mongoose from "mongoose";
 
 const MessageSchema = new mongoose.Schema({
   chatId: { type: String, required: true }, // e.g. for private: sorted "userA_userB", for group: groupId
+
   sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   receiver: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }, // null for group
   group: { type: String, default: null }, // group id when message belongs to a group
-  text: { type: String, required: true }, // plaintext for Day4, will be ciphertext on Day5
-  // placeholders for Day-5 encryption; empty for now
+
+  // text is now optional (plaintext or system messages)
+  text: { type: String, default: "" },
+
+  // encrypted payload (used from Day-5)
   ciphertext: { type: String, default: "" },
   iv: { type: String, default: "" },
+
   seen: { type: Boolean, default: false }
 }, { timestamps: true });
 
